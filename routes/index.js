@@ -5,13 +5,10 @@ const passwordUtils = require("../utils/passwordUtils");
 const User = require("../models/plugins/User");
 
 /* ------------POST ROUTES ---------*/
-router.post(
-    "/login",
-    passport.authenticate("local", {
-        failureRedirect: "/login-failure",
-        successRedirect: "login-success",
-    })
-);
+router.post("/login", passport.authenticate("local"), (req, res) => {
+    // Authentication successful
+    res.status(200).send(req.user);
+});
 router.post("/register", async (req, res, next) => {
     // console.log(req);
     console.log(req.body);
