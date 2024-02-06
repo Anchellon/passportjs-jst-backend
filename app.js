@@ -7,7 +7,7 @@ const mongoose = require("mongoose");
 var passport = require("passport");
 const session = require("express-session");
 var crypto = require("crypto");
-
+let cors = require("cors");
 // Connecting to mongoose
 const connection = require("./config/connection");
 
@@ -54,6 +54,7 @@ app.use((req, res, next) => {
 /**
  * -------------- other ----------------
  */
+app.use(cors());
 app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
