@@ -31,11 +31,10 @@ module.exports = (passport) => {
     passport.use(
         new JwtStrategy(options, async (jwt_payload, done) => {
             // We will assign the `sub` property on the JWT to the database ID of user
-            User.findOne({ _id: jwt_payload.sub }).then((err, user) => {
+            User.findOne({ _id: jwt_payload.sub }).then((user, err) => {
                 // This flow look familiar?  It is the same as when we implemented
                 // the `passport-local` strategy
                 if (err) {
-                    // con ;
                     return done(err, false);
                 }
                 if (user) {

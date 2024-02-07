@@ -12,7 +12,7 @@ var logger = require("morgan");
 
 // Create the Express application
 var app = express();
-
+app.use(logger("dev"));
 // Configures the database and opens a global connection that can be used in any module with `mongoose.connection`
 const connection = require("./config/connection");
 
