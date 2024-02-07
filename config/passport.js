@@ -1,48 +1,49 @@
-const passport = require("passport");
-const LocalStrategy = require("passport-local").Strategy;
-const connection = require("./connection");
-const User = connection.models.User;
-const validPassword = require("../utils/passwordUtils").validPassword;
-// The custome fields come up when the req object is being handled in the express middleware(passport)
-// and is attached so that it is available to the next middleware
+const JwtStrategy = require("passport-jwt").Strategy;
+const ExtractJwt = require("passport-jwt").ExtractJwt;
+const fs = require("fs");
+const path = require("path");
+const User = require("mongoose").model("User");
 
-const customFields = {
-    usernameField: "email",
-    passwordField: "password",
-};
-// PAssport local wont work if you change the fields "username", "password"
-const verifyCallback = (username, password, done) => {
-    User.findOne({ email: username })
-        .then((user) => {
-            if (!user) {
-                return done(null, false);
-            }
+const pathToKey = path.join(__dirname, "..", "id_rsa_pub.pem");
+const PUB_KEY = fs.readFileSync(pathToKey, "utf8");
 
-            const isValid = validPassword(password, user.hash, user.salt);
-
-            if (isValid) {
-                return done(null, user);
-            } else {
-                return done(null, false);
-            }
-        })
-        .catch((err) => {
-            done(err);
-        });
+// At a minimum, you must pass the `jwtFromRequest` and `secretOrKey` properties
+const options = {
+    jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+    secretOrKey: PUB_KEY,
+    algorithms: ["RS256"],
 };
 
-const strategy = new LocalStrategy(customFields, verifyCallback);
+// app.js will pass the global passport object here, and this function will configure it
+module.exports = (passport) => {
+    // The JWT payload is passed into the verify callback
+    passport.serializeUser((user, done) => {
+        done(null, user.id);
+    });
 
-passport.use(strategy);
-
-passport.serializeUser((user, done) => {
-    done(null, user.id);
-});
-
-passport.deserializeUser((userId, done) => {
-    User.findById(userId)
-        .then((user) => {
-            done(null, user);
+    passport.deserializeUser((userId, done) => {
+        User.findById(userId)
+            .then((user) => {
+                done(null, user);
+            })
+            .catch((err) => done(err));
+    });
+    passport.use(
+        new JwtStrategy(options, async (jwt_payload, done) => {
+            // We will assign the `sub` property on the JWT to the database ID of user
+            User.findOne({ _id: jwt_payload.sub }).then((err, user) => {
+                // This flow look familiar?  It is the same as when we implemented
+                // the `passport-local` strategy
+                if (err) {
+                    // con ;
+                    return done(err, false);
+                }
+                if (user) {
+                    return done(null, user);
+                } else {
+                    return done(null, false);
+                }
+            });
         })
-        .catch((err) => done(err));
-});
+    );
+};

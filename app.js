@@ -1,88 +1,52 @@
-var createError = require("http-errors");
-var express = require("express");
-var path = require("path");
-var cookieParser = require("cookie-parser");
-var logger = require("morgan");
-const mongoose = require("mongoose");
-var passport = require("passport");
-const session = require("express-session");
-var crypto = require("crypto");
-let cors = require("cors");
-// Connecting to mongoose
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
+const passport = require("passport");
+
+/**
+ * -------------- GENERAL SETUP ----------------
+ */
+
+// Gives us access to variables set in the .env file via `process.env.VARIABLE_NAME` syntax
+// require("dotenv").config();
+
+// Create the Express application
+var app = express();
+
+// Configures the database and opens a global connection that can be used in any module with `mongoose.connection`
 const connection = require("./config/connection");
 
-const MongoStore = require("connect-mongo")(session);
+// Must first load the models
+require("./models/User");
 
-var indexRouter = require("./routes/index");
-var usersRouter = require("./routes/users");
+// Pass the global passport object into the configuration function
+require("./config/passport")(passport);
 
-var app = express();
-/**
- * -------------- SESSION SETUP ----------------
- */
-
-const sessionStore = new MongoStore({
-    mongooseConnection: connection,
-    collection: "sessions",
-});
-
-app.use(
-    session({
-        secret: "some secret",
-        resave: false,
-        saveUninitialized: true,
-        store: sessionStore,
-        cookie: {
-            maxAge: 1000 * 60 * 60 * 24, // Equals 1 day (1 day * 24 hr/1 day * 60 min/1 hr * 60 sec/1 min * 1000 ms / 1 sec)
-        },
-    })
-);
-
-/**
- * -------------- PASSPORT AUTHENTICATION ----------------
- */
-require("./config/passport");
+// This will initialize the passport object on every request
 app.use(passport.initialize());
-app.use(passport.session());
 
-app.use((req, res, next) => {
-    console.log(req.session);
-    console.log(req.user);
-    next();
-});
-
-/**
- * -------------- other ----------------
- */
-app.use(cors());
-app.use(logger("dev"));
+// Instead of using body-parser middleware, use the new Express implementation of the same thing
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
+
+// Allows our Angular application to make HTTP requests to Express application
+app.use(cors());
+
+// Where Angular builds to - In the ./angular/angular.json file, you will find this configuration
+// at the property: projects.angular.architect.build.options.outputPath
+// When you run `ng build`, the output will go to the ./public directory
 app.use(express.static(path.join(__dirname, "public")));
 
-app.use("/", indexRouter);
-app.use("/users", usersRouter);
+/**
+ * -------------- ROUTES ----------------
+ */
 
-// catch 404 and forward to error handler
-app.use(function (req, res, next) {
-    next(createError(404));
-});
+// Imports all of the routes from ./routes/index.js
+app.use(require("./routes"));
 
-// error handler
-app.use(function (err, req, res, next) {
-    // set locals, only providing error in development
-    res.locals.message = err.message;
-    res.locals.error = req.app.get("env") === "development" ? err : {};
-
-    // render the error page
-    res.status(err.status || 500);
-});
 /**
  * -------------- SERVER ----------------
  */
 
 // Server listens on http://localhost:3000
 app.listen(3000);
-
-module.exports = app;
